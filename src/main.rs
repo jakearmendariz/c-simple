@@ -1,7 +1,9 @@
 extern crate lazy_static;
+mod ast;
 mod parser;
 mod scanner;
 mod sized_string;
+
 use crate::parser::Parser;
 
 use std::error;

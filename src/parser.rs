@@ -1,3 +1,4 @@
+use crate::ast::*;
 use crate::scanner::{Scanner, Token, TokenType};
 pub struct Parser {
     scanner: Scanner,
@@ -8,6 +9,10 @@ pub struct ParseError {
     line: u32,
     actual: TokenType,
     expected: Vec<TokenType>,
+}
+
+fn expect_statement() -> ParseError {
+    ParseError::eof(vec![IF, FOR, INT, FLOAT, ID])
 }
 
 impl ParseError {
@@ -101,25 +106,25 @@ impl Parser {
         }
     }
 
-    fn parse_expr(&mut self) -> ParseResult<()> {
+    fn parse_expr(&mut self) -> ParseResult<Expr> {
         self.debug("parse_expr");
-        self.parse_addsub()?;
-        self.parse_expr2()?;
-        Ok(())
+        let expr = self.parse_factor()?;
+        let result = self.parse_expr2(expr)?;
+        Ok(result)
     }
 
-    fn parse_expr2(&mut self) -> ParseResult<()> {
+    fn parse_expr2(&mut self, lhs: Expr) -> ParseResult<Expr> {
         self.debug("parse_expr2");
-        let token = self
-            .next_token()
-            .ok_or_else(|| ParseError::eof(vec![RPAREN, LBRACE, SEMI, EQUALITY, LESS, GREATER, LESSEQ]))?;
+        let token = self.next_token().ok_or_else(|| {
+            ParseError::eof(vec![RPAREN, LBRACE, SEMI, EQUALITY, LESS, GREATER, LESSEQ])
+        })?;
         match token.token_type {
-            RPAREN | LBRACE | SEMI => Ok(()),
+            RPAREN | LBRACE | SEMI => Ok(lhs),
             EQUALITY | LESS | LESSEQ | GREATER => {
                 self.to_match = None;
-                self.parse_addsub()?;
-                self.parse_expr2()?;
-                Ok(())
+                let rhs = self.parse_factor()?;
+                let expr = Expr::Binary(lhs.into(), token, rhs.into());
+                self.parse_expr2(expr)
             }
             _ => Err(ParseError::new(
                 token,
@@ -128,15 +133,14 @@ impl Parser {
         }
     }
 
-    fn parse_addsub(&mut self) -> ParseResult<()> {
-        self.debug("parse_addsub");
-        self.parse_term()?;
-        self.parse_addsub2()?;
-        Ok(())
+    fn parse_factor(&mut self) -> ParseResult<Expr> {
+        self.debug("parse_factor");
+        let expr = self.parse_term()?;
+        self.parse_factor2(expr)
     }
 
-    fn parse_addsub2(&mut self) -> ParseResult<()> {
-        self.debug("parse_addsub2");
+    fn parse_factor2(&mut self, lhs: Expr) -> ParseResult<Expr> {
+        self.debug("parse_factor2");
         let token = self.next_token().ok_or_else(|| {
             ParseError::eof(vec![
                 RPAREN, LBRACE, SEMI, EQUALITY, LESS, GREATER, PLUS, MINUS, LESSEQ,
@@ -145,26 +149,27 @@ impl Parser {
         match token.token_type {
             PLUS | MINUS => {
                 self.to_match = None;
-                self.parse_term()?;
-                self.parse_addsub2()?;
-                Ok(())
+                let rhs = self.parse_term()?;
+                let expr = Expr::Binary(lhs.into(), token, rhs.into());
+                self.parse_factor2(expr)
             }
-            RPAREN | LBRACE | SEMI | EQUALITY | LESS | GREATER | LESSEQ => Ok(()),
+            RPAREN | LBRACE | SEMI | EQUALITY | LESS | GREATER | LESSEQ => Ok(lhs),
             _ => Err(ParseError::new(
                 token,
-                vec![RPAREN, LBRACE, SEMI, EQUALITY, LESS, LESSEQ, GREATER, PLUS, MINUS],
+                vec![
+                    RPAREN, LBRACE, SEMI, EQUALITY, LESS, LESSEQ, GREATER, PLUS, MINUS,
+                ],
             )),
         }
     }
 
-    fn parse_term(&mut self) -> ParseResult<()> {
+    fn parse_term(&mut self) -> ParseResult<Expr> {
         self.debug("parse_term");
-        self.parse_factor()?;
-        self.parse_term2()?;
-        Ok(())
+        let expr = self.parse_unit()?;
+        self.parse_term2(expr)
     }
 
-    fn parse_term2(&mut self) -> ParseResult<()> {
+    fn parse_term2(&mut self, lhs: Expr) -> ParseResult<Expr> {
         self.debug("parse_term2");
         let token = self.next_token().ok_or_else(|| {
             ParseError::eof(vec![
@@ -174,74 +179,94 @@ impl Parser {
         match token.token_type {
             MULT | DIV => {
                 self.to_match = None;
-                self.parse_factor()?;
-                self.parse_term2()?;
-                Ok(())
+                let rhs = self.parse_unit()?;
+                let expr = Expr::Binary(lhs.into(), token, rhs.into());
+                self.parse_term2(expr)
             }
-            RPAREN | LBRACE | SEMI | EQUALITY | LESS | LESSEQ | GREATER | PLUS | MINUS => Ok(()),
+            RPAREN | LBRACE | SEMI | EQUALITY | LESS | LESSEQ | GREATER | PLUS | MINUS => Ok(lhs),
             _ => Err(ParseError::new(
                 token,
-                vec![RPAREN, LBRACE, SEMI, EQUALITY, LESS, GREATER, PLUS, MINUS, MULT, DIV],
+                vec![
+                    RPAREN, LBRACE, SEMI, EQUALITY, LESS, GREATER, PLUS, MINUS, MULT, DIV,
+                ],
             )),
         }
     }
 
-    fn parse_factor(&mut self) -> ParseResult<()> {
-        self.debug("parse_factor");
+    /// Parse the ID, literals, or ()
+    fn parse_unit(&mut self) -> ParseResult<Expr> {
+        self.debug("parse_unit");
         let token = self.eat(vec![LPAREN, ID, INTLIT, FLOATLIT])?;
         match token.token_type {
             LPAREN => {
-                self.parse_expr()?;
+                let expr = self.parse_expr()?;
                 self.eat(vec![RPAREN])?;
+                Ok(expr)
             }
-            _ => {
-                self.to_match = None;
-            }
-        };
-        Ok(())
+            _ => Ok(Expr::Terminal(token)),
+        }
     }
 
     /// Parses `if expr statement (else statement)?`
-    fn parse_if(&mut self) -> ParseResult<()> {
+    fn parse_if(&mut self) -> ParseResult<Ast> {
         self.eat(vec![TokenType::IF])?;
         self.to_match = None;
-        self.parse_expr()?;
-        self.parse_statement()?;
+        let conditional = self.parse_expr()?;
+        let statement = self.parse_statement()?.ok_or_else(expect_statement)?;
+        let mut else_statement = None;
         if let Some(token) = self.next_token() {
             if token.token_type == TokenType::ELSE {
                 self.eat(vec![ELSE])?;
-                self.parse_statement()?;
+                else_statement = self.parse_statement()?;
             }
         }
-        Ok(())
+        Ok(Ast::If {
+            conditional: conditional.into(),
+            statement: statement.into(),
+            else_statement: else_statement.into(),
+        })
     }
 
-    fn parse_for(&mut self) -> ParseResult<()> {
+    fn parse_for(&mut self) -> ParseResult<Ast> {
         self.eat_single(FOR)?;
         self.eat_single(LPAREN)?;
         // Before
-        self.parse_assignment()?;
+        let initial = self.parse_assignment()?;
         // Boolean check
-        self.parse_expr()?;
+        let conditional = self.parse_expr()?;
         self.eat_single(SEMI)?;
         // Update
-        self.eat_single(ID)?;
+        let id = self.eat_single(ID)?;
         self.eat_single(ASSIGN)?;
-        self.parse_expr()?;
+        let expr = self.parse_expr()?;
+        let update = Ast::Assignment {
+            vtype: None,
+            id,
+            expr: expr.into(),
+        };
         // Close
         self.eat_single(RPAREN)?;
         // Statement
-        self.parse_statement()?;
-        Ok(())
+        let body = self.parse_statement()?.ok_or_else(expect_statement)?;
+        Ok(Ast::For {
+            initial: initial.into(),
+            conditional: conditional.into(),
+            update: update.into(),
+            body: body.into(),
+        })
     }
 
-    fn parse_block(&mut self) -> ParseResult<()> {
+    fn parse_block(&mut self) -> ParseResult<Ast> {
         self.eat(vec![LBRACE])?;
+        let mut statements = Vec::new();
         while let Some(token) = self.next_token() {
             self.debug("block");
             match token.token_type {
                 RBRACE => break,
-                _ => self.parse_statement()?,
+                _ => {
+                    let statement = self.parse_statement()?.ok_or_else(expect_statement)?;
+                    statements.push(statement)
+                }
             };
         }
         if self.to_match.is_none() {
@@ -249,24 +274,30 @@ impl Parser {
         }
         self.eat(vec![RBRACE])?;
         self.debug("block-complete");
-        Ok(())
+        Ok(Ast::Block(statements))
     }
 
     /// Parse an assignment or declaration statement
-    fn parse_assignment(&mut self) -> ParseResult<()> {
+    fn parse_assignment(&mut self) -> ParseResult<Ast> {
         use TokenType::*;
+        let id: Token;
+        let vtype: Option<Token>;
         match self.next_token().unwrap().token_type {
             INT | FLOAT => {
+                vtype = self.to_match;
                 self.to_match = None;
-                self.eat(vec![TokenType::ID])?;
+                id = self.eat(vec![TokenType::ID])?;
                 if let Some(token) = self.next_token() {
                     match token.token_type {
                         // Assignment
                         ASSIGN => self.eat(vec![ASSIGN])?,
                         SEMI => {
-                            // Declaration statement 
+                            // Declaration statement
                             self.to_match = None;
-                            return Ok(());
+                            return Ok(Ast::Declaration {
+                                vtype: vtype.unwrap(),
+                                id,
+                            });
                         }
                         _ => return Err(ParseError::new(token, vec![ASSIGN, SEMI])),
                     };
@@ -275,22 +306,28 @@ impl Parser {
                 }
             }
             ID => {
+                id = self.to_match.unwrap();
+                vtype = None;
                 self.to_match = None;
                 self.eat(vec![ASSIGN])?;
             }
             a => panic!("{:?}", a),
         };
-        self.parse_expr()?;
+        let expr = self.parse_expr()?;
         self.eat(vec![SEMI])?;
-        Ok(())
+        Ok(Ast::Assignment {
+            vtype,
+            id,
+            expr: expr.into(),
+        })
     }
 
     /// Parsing a statement of a If, For, Assignment, Block
-    fn parse_statement(&mut self) -> ParseResult<Option<()>> {
+    fn parse_statement(&mut self) -> ParseResult<Option<Ast>> {
         match self.next_token() {
             Some(token) => {
                 use TokenType::*;
-                match token.token_type {
+                Ok(Some(match token.token_type {
                     IF => self.parse_if()?,
                     FOR => self.parse_for()?,
                     INT | FLOAT | ID => self.parse_assignment()?,
@@ -302,15 +339,16 @@ impl Parser {
                             actual,
                         })
                     }
-                };
-                Ok(Some(()))
+                }))
             }
             None => Ok(None),
         }
     }
 
     pub fn parse(&mut self) -> Result<(), ParseError> {
-        while self.parse_statement()?.is_some() {}
+        while let Some(stm) = self.parse_statement()? {
+            println!("{}", stm);
+        }
         Ok(())
     }
 }

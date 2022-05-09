@@ -52,11 +52,7 @@ pub struct Token {
 
 impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{:?}, {} at ({}, {})",
-            self.token_type, self.value, self.row, self.col
-        )
+        write!(f, "{}", self.value)
     }
 }
 
@@ -67,38 +63,6 @@ pub struct Scanner {
     col: u32,
     index: usize,
 }
-
-// Creating these lazy static variable seems to slow down computation.
-// use std::collections::HashMap;
-// lazy_static::lazy_static! {
-//     pub static ref KEYWORDS: HashMap<&'static str, TokenType> = {
-//         use TokenType::{*};
-//         let mut reserved: HashMap<&'static str, TokenType> = HashMap::with_capacity(6);
-//         reserved.insert("for", FOR);
-//         reserved.insert("while", WHILE);
-//         reserved.insert("int", INT);
-//         reserved.insert("float", FLOAT);
-//         reserved.insert("else", ELSE);
-//         reserved.insert("if", IF);
-//         reserved
-//     };
-// }
-// lazy_static::lazy_static! {
-//     pub static ref SINGLE_CHARACTER_TOKENS: HashMap<char, TokenType> = {
-//         use TokenType::{*};
-//         let mut tokens: HashMap<char, TokenType> = HashMap::with_capacity(10);
-//         tokens.insert('{', LBRACE);
-//         tokens.insert('}', RBRACE);
-//         tokens.insert('(', LPAREN);
-//         tokens.insert(')', RPAREN);
-//         tokens.insert('+', PLUS);
-//         tokens.insert('-', MINUS);
-//         tokens.insert('*', MULT);
-//         tokens.insert('/', DIV);
-//         tokens.insert(';', SEMI);
-//         tokens
-//     };
-// }
 
 impl Scanner {
     pub fn new(contents: Vec<char>) -> Self {
@@ -216,8 +180,7 @@ impl Scanner {
                     }
                     self.index += 2;
                     self.token()?
-                }
-                else {
+                } else {
                     self.new_token(TokenType::DIV, "/")
                 }
             }
