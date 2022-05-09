@@ -1,0 +1,1 @@
+cargo run tokens-large.txt  1.76s user 0.04s system 98% cpu 1.823 total
