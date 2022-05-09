@@ -1,7 +1,8 @@
 use std::fmt::Display;
-/// sized string for strings on the stack with a limited size.
 use std::string::ToString;
 const SIZE: usize = 32;
+
+/// Sized string for strings on the stack with a limited size.
 #[derive(Debug, Clone, Copy)]
 pub struct SizedString {
     size: usize,

@@ -202,7 +202,24 @@ impl Scanner {
             }
             '/' => {
                 self.index += 1;
-                self.new_token(TokenType::DIV, "/")
+                if self.contents[self.index] == '/' {
+                    // Single line comment
+                    while self.contents[self.index] != '\n' {
+                        self.index += 1;
+                    }
+                    self.index += 1;
+                    self.token()?
+                } else if self.contents[self.index] == '*' {
+                    // Multiple line comment
+                    while self.contents[self.index] != '*' && self.contents[self.index + 1] != '/' {
+                        self.index += 1;
+                    }
+                    self.index += 2;
+                    self.token()?
+                }
+                else {
+                    self.new_token(TokenType::DIV, "/")
+                }
             }
             '"' => {
                 self.index += 1;

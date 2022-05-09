@@ -16,7 +16,11 @@ if (1) {
 for(x = 0; x < 4; x = x + 1) {
     y = x + x;
 }
-
+// Hello world
+/*
+Heck fucking
+yes
+*/
 if 1 == 2 {
     a = b;
     if (y) {
