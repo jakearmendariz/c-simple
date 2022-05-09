@@ -115,36 +115,27 @@ impl Scanner {
             return None;
         }
         self.col += 1;
-        // match SINGLE_CHARACTER_TOKENS.get(&contents[self.index]) {
-        //     Some(token_type) => {
-        //         self.index += 1;
-        //         return Some(self.new_token(*token_type, contents[self.index]));
-        //     },
-        //     None => (),
-        // };
-
-        Some(match self.contents[self.index] {
-            '{' => {
-                self.index += 1;
-                self.new_token(TokenType::LBRACE, "{")
-            }
-            '}' => {
-                self.index += 1;
-                self.new_token(TokenType::RBRACE, "}")
-            }
-            ' ' | '\t' => {
-                self.index += 1;
-                self.token()?
-            }
+        self.index += 1;
+        Some(match self.contents[self.index - 1] {
+            '{' => self.new_token(TokenType::LBRACE, "{"),
+            '}' => self.new_token(TokenType::RBRACE, "}"),
+            ';' => self.new_token(TokenType::SEMI, ";"),
+            ')' => self.new_token(TokenType::RPAREN, ")"),
+            '(' => self.new_token(TokenType::LPAREN, "("),
+            '+' => self.new_token(TokenType::PLUS, "+"),
+            '-' => self.new_token(TokenType::MINUS, "-"),
+            '*' => self.new_token(TokenType::MULT, "*"),
+            '"' => self.new_token(TokenType::QUOTATION, "\""),
+            ' ' | '\t' => self.token()?,
             '\n' => {
-                self.index += 1;
+                // self.index += 1;
                 self.row += 1;
                 self.col = 0;
                 // print!("newline");
                 self.token()?
             }
             '=' => {
-                self.index += 1;
+                // self.index += 1;
                 if self.contents[self.index] == '=' {
                     self.index += 1;
                     self.new_token(TokenType::EQUALITY, "==")
@@ -152,20 +143,9 @@ impl Scanner {
                     self.new_token(TokenType::ASSIGN, "=")
                 }
             }
-            '+' => {
-                self.index += 1;
-                self.new_token(TokenType::PLUS, "+")
-            }
-            '-' => {
-                self.index += 1;
-                self.new_token(TokenType::MINUS, "-")
-            }
-            '*' => {
-                self.index += 1;
-                self.new_token(TokenType::MULT, "*")
-            }
+
             '/' => {
-                self.index += 1;
+                // self.index += 1;
                 if self.contents[self.index] == '/' {
                     // Single line comment
                     while self.contents[self.index] != '\n' {
@@ -184,12 +164,8 @@ impl Scanner {
                     self.new_token(TokenType::DIV, "/")
                 }
             }
-            '"' => {
-                self.index += 1;
-                self.new_token(TokenType::QUOTATION, "\"")
-            }
             '<' => {
-                self.index += 1;
+                // self.index += 1;
                 if self.contents[self.index] == '=' {
                     self.index += 1;
                     self.new_token(TokenType::LESSEQ, "<=")
@@ -198,7 +174,7 @@ impl Scanner {
                 }
             }
             '>' => {
-                self.index += 1;
+                // self.index += 1;
                 if self.contents[self.index] == '=' {
                     self.index += 1;
                     self.new_token(TokenType::GREATEREQ, ">=")
@@ -206,19 +182,8 @@ impl Scanner {
                     self.new_token(TokenType::GREATER, ">")
                 }
             }
-            ';' => {
-                self.index += 1;
-                self.new_token(TokenType::SEMI, ";")
-            }
-            ')' => {
-                self.index += 1;
-                self.new_token(TokenType::RPAREN, ")")
-            }
-            '(' => {
-                self.index += 1;
-                self.new_token(TokenType::LPAREN, "(")
-            }
             _ => {
+                self.index -= 1;
                 let mut literal = String::new();
                 if is_num(self.contents[self.index]) {
                     // NUMBER
