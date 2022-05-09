@@ -31,6 +31,7 @@ pub enum TokenType {
     LBRACE,
     RBRACE,
     EOF,
+    QUOTATION,
 }
 
 fn is_num(a: char) -> bool {
@@ -133,6 +134,18 @@ impl Scanner {
         self.new_token(token_type, literal)
     }
 
+    /// UNSAFE
+    /// Trusts that the left value read was ", looking for next "
+    pub fn _read_string(&mut self) -> String {
+        let mut result = String::new();
+        while self.contents[self.index] != '"' {
+            result.push(self.contents[self.index]);
+            self.index += 1;
+        }
+        self.index += 1;
+        result
+    }
+
     pub fn token(&mut self) -> Option<Token> {
         if self.index >= self.contents.len() {
             return None;
@@ -146,77 +159,84 @@ impl Scanner {
         //     None => (),
         // };
 
-        match self.contents[self.index] {
+        Some(match self.contents[self.index] {
             '{' => {
                 self.index += 1;
-                Some(self.new_token(TokenType::LBRACE, "{"))
+                self.new_token(TokenType::LBRACE, "{")
             }
             '}' => {
                 self.index += 1;
-                Some(self.new_token(TokenType::RBRACE, "}"))
+                self.new_token(TokenType::RBRACE, "}")
             }
             ' ' | '\t' => {
                 self.index += 1;
-                self.token()
+                self.token()?
             }
             '\n' => {
                 self.index += 1;
                 self.row += 1;
                 self.col = 0;
                 // print!("newline");
-                self.token()
+                self.token()?
             }
             '=' => {
                 self.index += 1;
-                Some(if self.contents[self.index + 1] == '=' {
+                if self.contents[self.index] == '=' {
+                    self.index += 1;
                     self.new_token(TokenType::EQUALITY, "==")
                 } else {
                     self.new_token(TokenType::ASSIGN, "=")
-                })
+                }
             }
             '+' => {
                 self.index += 1;
-                Some(self.new_token(TokenType::PLUS, "+"))
+                self.new_token(TokenType::PLUS, "+")
             }
             '-' => {
                 self.index += 1;
-                Some(self.new_token(TokenType::MINUS, "-"))
+                self.new_token(TokenType::MINUS, "-")
             }
             '*' => {
                 self.index += 1;
-                Some(self.new_token(TokenType::MULT, "*"))
+                self.new_token(TokenType::MULT, "*")
             }
             '/' => {
                 self.index += 1;
-                Some(self.new_token(TokenType::DIV, "/"))
+                self.new_token(TokenType::DIV, "/")
+            }
+            '"' => {
+                self.index += 1;
+                self.new_token(TokenType::QUOTATION, "\"")
             }
             '<' => {
                 self.index += 1;
                 if self.contents[self.index] == '=' {
-                    Some(self.new_token(TokenType::LESS, "<"))
+                    self.index += 1;
+                    self.new_token(TokenType::LESSEQ, "<=")
                 } else {
-                    Some(self.new_token(TokenType::LESSEQ, "<="))
+                    self.new_token(TokenType::LESS, "<")
                 }
             }
             '>' => {
                 self.index += 1;
                 if self.contents[self.index] == '=' {
-                    Some(self.new_token(TokenType::GREATER, ">"))
+                    self.index += 1;
+                    self.new_token(TokenType::GREATEREQ, ">=")
                 } else {
-                    Some(self.new_token(TokenType::GREATEREQ, ">="))
+                    self.new_token(TokenType::GREATER, ">")
                 }
             }
             ';' => {
                 self.index += 1;
-                Some(self.new_token(TokenType::SEMI, ";"))
+                self.new_token(TokenType::SEMI, ";")
             }
             ')' => {
                 self.index += 1;
-                Some(self.new_token(TokenType::RPAREN, ")"))
+                self.new_token(TokenType::RPAREN, ")")
             }
             '(' => {
                 self.index += 1;
-                Some(self.new_token(TokenType::LPAREN, "("))
+                self.new_token(TokenType::LPAREN, "(")
             }
             _ => {
                 let mut literal = String::new();
@@ -234,9 +254,9 @@ impl Scanner {
                             literal.push(self.contents[self.index]);
                             self.index += 1;
                         }
-                        Some(self.new_token(TokenType::FLOATLIT, &literal))
+                        self.new_token(TokenType::FLOATLIT, &literal)
                     } else {
-                        Some(self.new_token(TokenType::INTLIT, &literal))
+                        self.new_token(TokenType::INTLIT, &literal)
                     }
                 } else if is_alpha(self.contents[self.index]) {
                     // ID
@@ -244,11 +264,11 @@ impl Scanner {
                         literal.push(self.contents[self.index]);
                         self.index += 1;
                     }
-                    Some(self.reserved_words(literal))
+                    self.reserved_words(literal)
                 } else {
                     panic!("Unexpected character: {}", self.contents[self.index]);
                 }
             }
-        }
+        })
     }
 }
