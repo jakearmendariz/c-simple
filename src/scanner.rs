@@ -56,6 +56,12 @@ impl Display for Token {
     }
 }
 
+impl Token {
+    pub fn to_string(&self) -> String {
+        format!("{}", self.value)
+    }
+}
+
 #[derive(Default)]
 pub struct Scanner {
     contents: Vec<char>,

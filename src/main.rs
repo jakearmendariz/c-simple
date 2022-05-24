@@ -3,8 +3,11 @@ mod ast;
 mod parser;
 mod scanner;
 mod sized_string;
+mod type_check;
 
+use crate::ast::Ast;
 use crate::parser::Parser;
+use crate::type_check::type_check;
 
 use std::error;
 
@@ -22,7 +25,7 @@ fn read_input() -> Result<Vec<char>> {
     Ok(chars)
 }
 
-fn parse(input: Vec<char>) -> Result<()> {
+fn parse(input: Vec<char>) -> Result<Vec<Ast>> {
     let mut parser = Parser::new(input);
     parser.parse().map_err(|e| e.into())
 }
@@ -30,7 +33,13 @@ fn parse(input: Vec<char>) -> Result<()> {
 fn main() {
     match read_input() {
         Ok(chars) => match parse(chars) {
-            Ok(_) => println!("Successful parse"),
+            Ok(asts) => {
+                println!("Successful parse");
+                match type_check(asts) {
+                    Ok(_) => println!("Successful type check"),
+                    Err(e) => println!("{}", e),
+                }
+            }
             Err(e) => {
                 println!("{}", e)
             }

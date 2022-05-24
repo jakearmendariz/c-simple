@@ -285,6 +285,7 @@ impl Parser {
         match self.next_token().unwrap().token_type {
             INT | FLOAT => {
                 vtype = self.to_match;
+                // println!("vtype: {:?}", vtype);
                 self.to_match = None;
                 id = self.eat(vec![TokenType::ID])?;
                 if let Some(token) = self.next_token() {
@@ -345,10 +346,11 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<(), ParseError> {
+    pub fn parse(&mut self) -> Result<Vec<Ast>, ParseError> {
+        let mut statements = Vec::new();
         while let Some(stm) = self.parse_statement()? {
-            println!("{}", stm);
+            statements.push(stm);
         }
-        Ok(())
+        Ok(statements)
     }
 }

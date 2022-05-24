@@ -1,7 +1,7 @@
 use crate::scanner::Token;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Ast {
     Assignment {
         vtype: Option<Token>,
@@ -24,6 +24,7 @@ pub enum Ast {
         body: Box<Ast>,
     },
     Block(Vec<Ast>),
+    Skip,
 }
 
 impl fmt::Display for Ast {
@@ -59,20 +60,28 @@ impl fmt::Display for Ast {
                 //  format!("{{\n{}\n}}", body)
                 result
             }
+            Ast::Skip => String::from("skip"),
         })
     }
 }
 
-pub enum _VarType {
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum VarType {
     Float,
     Int,
 }
 
-#[derive(Debug)]
+// pub struct Terminal {
+//     token: Token,
+//     vtype: Option<VarType>,
+// }
+
+#[derive(Debug, Clone)]
 pub enum Expr {
     Binary(Box<Expr>, Token, Box<Expr>),
     // Unary(Token, Box<Expr>),
     Terminal(Token),
+    TypeConvert(VarType, Box<Expr>),
 }
 
 impl fmt::Display for Expr {
@@ -80,6 +89,7 @@ impl fmt::Display for Expr {
         f.write_str(&match self {
             Expr::Binary(e1, t, e2) => format!("({} {} {})", *e1, t, *e2),
             Expr::Terminal(t) => format!("{}", t),
+            Expr::TypeConvert(v, expr) => format!("{:?}({})", v, expr),
         })
     }
 }
