@@ -123,7 +123,7 @@ impl Parser {
             EQUALITY | LESS | LESSEQ | GREATER => {
                 self.to_match = None;
                 let rhs = self.parse_factor()?;
-                let expr = Expr::Binary(lhs.into(), token, rhs.into());
+                let expr = Expr::Binary(lhs.into(), token.into(), rhs.into());
                 self.parse_expr2(expr)
             }
             _ => Err(ParseError::new(
@@ -150,7 +150,7 @@ impl Parser {
             PLUS | MINUS => {
                 self.to_match = None;
                 let rhs = self.parse_term()?;
-                let expr = Expr::Binary(lhs.into(), token, rhs.into());
+                let expr = Expr::Binary(lhs.into(), token.into(), rhs.into());
                 self.parse_factor2(expr)
             }
             RPAREN | LBRACE | SEMI | EQUALITY | LESS | GREATER | LESSEQ => Ok(lhs),
@@ -180,7 +180,7 @@ impl Parser {
             MULT | DIV => {
                 self.to_match = None;
                 let rhs = self.parse_unit()?;
-                let expr = Expr::Binary(lhs.into(), token, rhs.into());
+                let expr = Expr::Binary(lhs.into(), token.into(), rhs.into());
                 self.parse_term2(expr)
             }
             RPAREN | LBRACE | SEMI | EQUALITY | LESS | LESSEQ | GREATER | PLUS | MINUS => Ok(lhs),
@@ -203,7 +203,7 @@ impl Parser {
                 self.eat(vec![RPAREN])?;
                 Ok(expr)
             }
-            _ => Ok(Expr::Terminal(token)),
+            _ => Ok(Expr::Terminal(token.into())),
         }
     }
 
@@ -241,7 +241,7 @@ impl Parser {
         let expr = self.parse_expr()?;
         let update = Ast::Assignment {
             vtype: None,
-            id,
+            id: id.into(),
             expr: expr.into(),
         };
         // Close
@@ -297,7 +297,7 @@ impl Parser {
                             self.to_match = None;
                             return Ok(Ast::Declaration {
                                 vtype: vtype.unwrap(),
-                                id,
+                                id: id.into(),
                             });
                         }
                         _ => return Err(ParseError::new(token, vec![ASSIGN, SEMI])),
@@ -318,7 +318,7 @@ impl Parser {
         self.eat(vec![SEMI])?;
         Ok(Ast::Assignment {
             vtype,
-            id,
+            id: id.into(),
             expr: expr.into(),
         })
     }

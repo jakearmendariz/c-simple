@@ -5,12 +5,12 @@ use std::fmt;
 pub enum Ast {
     Assignment {
         vtype: Option<Token>,
-        id: Token,
+        id: Terminal,
         expr: Box<Expr>,
     },
     Declaration {
         vtype: Token,
-        id: Token,
+        id: Terminal,
     },
     If {
         conditional: Box<Expr>,
@@ -71,16 +71,34 @@ pub enum VarType {
     Int,
 }
 
-// pub struct Terminal {
-//     token: Token,
-//     vtype: Option<VarType>,
-// }
+impl Into<Terminal> for Token {
+    fn into(self) -> Terminal {
+        Terminal {
+            token: self,
+            vtype: None,
+            uid: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Terminal {
+    pub token: Token,
+    pub vtype: Option<VarType>,
+    pub uid: Option<u32>,
+}
+
+impl fmt::Display for Terminal {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&format!("{}", self.token))
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    Binary(Box<Expr>, Token, Box<Expr>),
+    Binary(Box<Expr>, Terminal, Box<Expr>),
     // Unary(Token, Box<Expr>),
-    Terminal(Token),
+    Terminal(Terminal),
     TypeConvert(VarType, Box<Expr>),
 }
 

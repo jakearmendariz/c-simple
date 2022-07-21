@@ -1,11 +1,13 @@
 extern crate lazy_static;
 mod ast;
+mod ir;
 mod parser;
 mod scanner;
 mod sized_string;
 mod type_check;
 
 use crate::ast::Ast;
+use crate::ir::ast_to_instructions;
 use crate::parser::Parser;
 use crate::type_check::type_check;
 
@@ -34,9 +36,13 @@ fn main() {
     match read_input() {
         Ok(chars) => match parse(chars) {
             Ok(asts) => {
-                println!("Successful parse");
+                // println!("{:?}", asts);
                 match type_check(asts) {
-                    Ok(_) => println!("Successful type check"),
+                    Ok(typed_ast) => {
+                        println!("{}", typed_ast);
+                        let instrs = ast_to_instructions(typed_ast);
+                        instrs.iter().for_each(move |instr| println!("{}", instr));
+                    }
                     Err(e) => println!("{}", e),
                 }
             }
