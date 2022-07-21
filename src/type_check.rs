@@ -56,10 +56,7 @@ impl<T: Copy> SymbolTable<T> {
     }
 
     pub fn get_variable(&self, var_name: &str) -> Option<T> {
-        match self.var_map.get(var_name) {
-            Some(value) => Some(*value),
-            None => None,
-        }
+        self.var_map.get(var_name).copied()
     }
 }
 
@@ -144,30 +141,26 @@ fn check_ast(ast: Ast, memory: &mut SymbolTable<SymbolTableData>) -> SymbolResul
                     if expr_type != expected_vartype.0 {
                         if expr_type == VarType::Int {
                             Ok(Ast::Assignment {
-                                vtype: vtype,
+                                vtype,
                                 id: id_terminal,
                                 expr: Box::new(Expr::TypeConvert(VarType::Int, new_expr.into())),
                             })
                         } else {
                             Ok(Ast::Assignment {
-                                vtype: vtype,
+                                vtype,
                                 id: id_terminal,
                                 expr: Box::new(Expr::TypeConvert(VarType::Float, new_expr.into())),
                             })
                         }
                     } else {
                         Ok(Ast::Assignment {
-                            vtype: vtype,
+                            vtype,
                             id: id_terminal,
                             expr: new_expr.into(),
                         })
                     }
                 }
-                None => panic!(
-                    "Undeclared value \"{}\" on line {}",
-                    id.to_string(),
-                    id.token.row
-                ),
+                None => panic!("Undeclared value \"{}\" on line {}", id, id.token.row),
             }
         }
         Ast::If {

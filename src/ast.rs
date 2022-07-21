@@ -54,10 +54,10 @@ impl fmt::Display for Ast {
             } => format!("for ({} {}; {})\n{}", initial, conditional, update, body),
             Ast::Block(body) => {
                 let mut result = String::new();
+                use std::fmt::Write as _;
                 for stm in body {
-                    result.push_str(&format!("\t{}\n", stm));
+                    write!(result, "\t{}\n", stm).expect("Couldn't write");
                 }
-                //  format!("{{\n{}\n}}", body)
                 result
             }
             Ast::Skip => String::from("skip"),
@@ -71,10 +71,10 @@ pub enum VarType {
     Int,
 }
 
-impl Into<Terminal> for Token {
-    fn into(self) -> Terminal {
+impl From<Token> for Terminal {
+    fn from(token: Token) -> Terminal {
         Terminal {
-            token: self,
+            token,
             vtype: None,
             uid: None,
         }
